@@ -1,0 +1,4 @@
+backend/models/
+backend/data/
+backend/encoder/
+backend/.venv/
