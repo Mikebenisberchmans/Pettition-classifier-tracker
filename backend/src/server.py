@@ -118,9 +118,18 @@ def init_db():
                 predicted_label   TEXT,
                 label_id          INTEGER,
                 detected_language TEXT,
-                submitted_at      TEXT NOT NULL
+                submitted_at      TEXT NOT NULL,
+                emailed_at        TEXT
             )
         """)
+        # Migration for existing databases: add emailed_at if missing
+        try:
+            conn.execute("ALTER TABLE petitions ADD COLUMN emailed_at TEXT")
+            # Mark all existing petitions as already emailed so the first
+            # scheduled run does not blast historical data.
+            conn.execute("UPDATE petitions SET emailed_at = submitted_at WHERE emailed_at IS NULL")
+        except sqlite3.OperationalError:
+            pass  # column already exists
         conn.commit()
     logger.info("DB ready at %s", DB_PATH)
 
@@ -209,8 +218,50 @@ def track_petition(petition_id):
     })
 
 
+# ── Admin / Email Job endpoints ──────────────────────────────────────────────
+@app.route("/api/admin/trigger-email-job", methods=["POST"])
+def trigger_email_job():
+    """Manually trigger the daily email job (for testing)."""
+    from email_service import run_daily_email_job
+    result = run_daily_email_job()
+    return jsonify(result)
+
+
+@app.route("/api/admin/email-status")
+def email_status():
+    """Quick overview of emailed vs pending petitions."""
+    db = get_db()
+    total   = db.execute("SELECT COUNT(*) FROM petitions").fetchone()[0]
+    emailed = db.execute("SELECT COUNT(*) FROM petitions WHERE emailed_at IS NOT NULL").fetchone()[0]
+    pending = db.execute("SELECT COUNT(*) FROM petitions WHERE emailed_at IS NULL").fetchone()[0]
+    return jsonify({"total": total, "emailed": emailed, "pending": pending})
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     init_db()
     load_models()                      # load once, before Flask starts
+
+    # Start the daily email scheduler if enabled
+    from email_service import load_email_config, run_daily_email_job
+    try:
+        email_cfg = load_email_config()
+        if email_cfg.get("enabled"):
+            from apscheduler.schedulers.background import BackgroundScheduler
+            scheduler = BackgroundScheduler()
+            scheduler.add_job(
+                run_daily_email_job,
+                trigger="cron",
+                hour=email_cfg["schedule_hour"],
+                minute=email_cfg["schedule_minute"],
+                id="daily_petition_email",
+            )
+            scheduler.start()
+            logger.info("Email scheduler started: daily at %02d:%02d",
+                        email_cfg["schedule_hour"], email_cfg["schedule_minute"])
+        else:
+            logger.info("Email scheduler disabled (set enabled=true in config/email_config.json)")
+    except Exception:
+        logger.exception("Could not initialize email scheduler")
+
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)

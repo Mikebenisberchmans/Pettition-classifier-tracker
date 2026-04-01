@@ -1,0 +1,12 @@
+{
+  "Infrastructure & Roads": ["roads.dept@gov.example.com"],
+  "Water & Sanitation": ["water.dept@gov.example.com"],
+  "Public Safety & Emergency": ["safety.dept@gov.example.com"],
+  "Environment & Pollution": ["environment.dept@gov.example.com"],
+  "Healthcare": ["health.dept@gov.example.com"],
+  "Education": ["education.dept@gov.example.com"],
+  "Public Transport": ["transport.dept@gov.example.com"],
+  "Housing & Land": ["housing.dept@gov.example.com"],
+  "Governance & Administration": ["governance.dept@gov.example.com"],
+  "Other": ["general.petitions@gov.example.com"]
+}
