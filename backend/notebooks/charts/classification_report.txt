@@ -1,0 +1,9 @@
+                         precision    recall  f1-score   support
+
+            Fast Action       0.75      1.00      0.86         6
+          Normal Action       1.00      1.00      1.00        12
+ Urgent Action Required       1.00      0.83      0.91        12
+
+               accuracy                           0.93        30
+              macro avg       0.92      0.94      0.92        30
+           weighted avg       0.95      0.93      0.94        30
